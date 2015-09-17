@@ -1,10 +1,10 @@
 # Flask configuration
-SECRET_KEY = 'SOME_RANDOM_THING'
+SECRET_KEY = '403LjGiBHBXt5Gj329QU'
 DEBUG = True
 
 # OAuth configuration
-CONSUMER_KEY = 'YOUR_KEY'
-CONSUMER_SECRET = 'YOUR_SECRET'
+CONSUMER_KEY = 'foa0YuAxJTiHHmaUlN5Q'
+CONSUMER_SECRET = 'dzQjFTp3X69JXHoGthg2XfjCrdQ8waOlvXq6igbXmQ'
 
 # Database configuration
 MONGODB_URL = 'mongodb://localhost/twixplorer'
