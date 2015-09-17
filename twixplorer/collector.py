@@ -20,7 +20,7 @@ import store
 mod = Blueprint("collector", __name__)
 
 active_collectors = []
-datastore = store.NullDataStore()
+datastore = store.PyMongoDataStore(config.MONGODB_URL)
 
 def get_api(request):
     # set up and return a twitter api object
