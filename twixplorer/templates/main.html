@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block body %}
+    <h1>Twitter Topic Explorer - Data Collection</h1>
+    <p>
+      Welcome, {{user.name}}!
+    </p><p>Enter the keywords that will be used in this Data Collection job:
+      <form action="{{ url_for('collector.collect') }}">
+        <input type="text" name="query"><br>
+        <input type="submit" value="Submit">
+      </form>
+        
+    </p>
+    
+    {% if active_collectors %}
+    <p>List of Data Collection jobs:</p>
+    <ul>
+    {% for job in active_collectors %}
+        <li><a href="{{ url_for('collector.job') }}?id={{loop.index}}">Data Collection job. Keywords: {{ job.query }}</a></li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    <p></p>
+{% endblock %}
