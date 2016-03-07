@@ -11,16 +11,16 @@ class PyMongoDataStore(object):
     def __init__(self, mongodb_url):
         client = pymongo.MongoClient(mongodb_url)
         db = client.twixplorer
-        twitter_collection = db.twitter
+        self.twitter_collection = db.twitter
 
     def find(self, query):
-        query_result = twitter_collection.find({'query': c.query})
+        query_result = self.twitter_collection.find(query)
         nr_tweets = query_result.count()
         tweets = query_result.sort('$natural', -1).limit(20)
         return nr_tweets, tweets
 
     def insert(self, obj):
-        twitter_collection.insert(obj)
+        self.twitter_collection.insert(obj)
 
 class NullDataStore(object):
 
