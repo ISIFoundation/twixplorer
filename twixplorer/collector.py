@@ -20,7 +20,7 @@ import store
 mod = Blueprint("collector", __name__)
 
 active_collectors = []
-datastore = store.NullDataStore()
+datastore = store.PyMongoDataStore(config.MONGODB_URL)
 
 def get_api(request):
     # set up and return a twitter api object
@@ -92,8 +92,8 @@ class StreamingListener(tweepy.StreamListener):
 
         try:
             status = json.loads(data)
-        except Exception, e:
-            print e, repr(data)
+        except Exception as e:
+            print(e, repr(data))
             return False
 
         twitter_obj = {'status':status, 'query':self.collector.query}
@@ -122,7 +122,7 @@ class Collector(threading.Thread):
     def run(self):
         q = self.query.split(",")
 
-        print "Streaming retweets for query '%s'" % q
+        print("Streaming retweets for query '%s'" % q)
         listener = StreamingListener(self)
 
         consumer_key, consumer_secret, \
@@ -139,12 +139,12 @@ class Collector(threading.Thread):
                 self.stream = tweepy.streaming.Stream(auth, listener, timeout=60.0)
                 self.stream.filter(track=q)
                 self.connected = False
-                print "Connection dropped:", self.query
+                print("Connection dropped:", self.query)
                 if self.active:
                     time.sleep(60)
             except socket.gaierror:
                 self.connected = False
-                print "Stream closed"
+                print("Stream closed")
                 time.sleep(60)
             except Exception:
                 self.connected = False
@@ -152,9 +152,9 @@ class Collector(threading.Thread):
                 sys.stdout.flush()
                 time.sleep(60)
 
-        print "Collector stopped."
+        print("Collector stopped.")
 
     def stop(self):
-        print "Stopping collector: ", self.query
+        print("Stopping collector: ", self.query)
         self.active = False
         self.stream.disconnect()

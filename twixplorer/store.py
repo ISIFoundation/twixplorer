@@ -28,7 +28,7 @@ class NullDataStore(object):
         pass
 
     def insert(self, obj):
-        print obj['status']['text']
+        print(obj['status']['text'])
 
     def find(self, query):
         return 0, []
