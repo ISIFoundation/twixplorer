@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<script type=text/javascript>
+  window.onload = function() {
+    $('button#download').bind('click', function() {
+      $('button#download').html('Download progress: <span id="progress">?</span>');
+      downloadUrl = "{{ url_for('collector.download_query') }}?q='{{query|quote}}'&fields={{fields_str|quote}}&uid={{uid}}";
+      var downloadFrame = document.createElement("iframe"); 
+      downloadFrame.setAttribute('src',downloadUrl);
+      downloadFrame.setAttribute('style',"display:none;"); 
+      document.body.appendChild(downloadFrame); 
+      trackDownload();
+      $("#warning").show();
+      return true;
+    });
+    
+    var trackDownload = function() {
+      $.getJSON("{{ url_for('collector.track_download') }}", {
+        uid: '{{ uid }}'
+      }, function(result) {
+        $("span#progress").text(result.progress);
+        setTimeout(trackDownload, 2000);
+      });
+    };
+  };
+</script>
+
+    <h1>Twitter Topic Explorer - Data Explorer</h1>
+    
+     <h3>Query: '{{query}}'</h3>
+     <br />
+     <div class="form-group form-group-sm w-100">
+       Fields:
+     <form class="form-horizontal">
+       <div class="form-group form-group-sm" style="display: flex;">
+          <input type="hidden" name="q" value="{{ query|quote }}" /> 
+          <input type="hidden" name="uid" value="{{ uid }}" /> 
+          <input id="fields" class="form-control" type="text" name="fields" value="{{ fields_str }}" style="flex: 1;" >
+          <button class="btn btn-primary" type="submit" formaction="{{ url_for('collector.explore_query') }}"> Change fields </button>
+       </div>
+       {% if missing_fields_string %} 
+          <br /> <small class="form-text text-muted">Fields you can add: {{ missing_fields_string }} </small>
+       {% endif %}
+       
+       <hr />
+       <h4>Showing {{ showing }} of {{ count }} results
+           <button class="btn btn-primary" id="download" type="button">
+              Download all as zipped csv
+           </button>
+       </h4>
+       <div id="warning" style="display:none;">Please leave this page open while download in progress</div>
+       
+     </form>
+     </div>
+     
+     <br />
+     <table class="table">
+       {{ sample_table | safe }}
+     </table>
+{% endblock %}
