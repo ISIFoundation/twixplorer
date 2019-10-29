@@ -116,8 +116,7 @@ def download_query():
 
 @mod.route('/explore/query/download/track')
 def track_download():
-    r = explore.track_download(uid=request.args.get('uid'))
-    return jsonify({"progress": r})
+    return jsonify(explore.track_download(uid=request.args.get('uid')))
 
 class StreamingListener(tweepy.StreamListener):
 

@@ -20,9 +20,18 @@
         uid: '{{ uid }}'
       }, function(result) {
         $("span#progress").text(result.progress);
-        setTimeout(trackDownload, 2000);
+        if (!result.complete) {
+          setTimeout(trackDownload, 2000);
+        }
       });
     };
+    
+    $('button#wget-button').bind('click', function() {
+      $('button#download').html('Download progress: <span id="progress">?</span>');
+      trackDownload();
+      $("#wget-info").show();
+      return true;
+    });
   };
 </script>
 
@@ -48,8 +57,18 @@
            <button class="btn btn-primary" id="download" type="button">
               Download all as zipped csv
            </button>
+           
+           <button class="btn" id="wget-button" type="button">
+              Download with <span style="font-family: monospace;">wget</span>
+           </button>
        </h4>
        <div id="warning" style="display:none;">Please leave this page open while download in progress</div>
+       <div id="wget-info" style="display:none;">
+         <span style="font-family: monospace;">
+           wget -O twexplorer.csv.bz2
+           "{{ url_for('collector.download_query', _external=True) }}?q='{{query|quote}}'&fields={{fields_str|quote}}&uid={{uid}}"
+         </span>
+       </div>
        
      </form>
      </div>

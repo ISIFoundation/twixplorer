@@ -116,6 +116,11 @@ def download_query(store, query, fields=DEFAULT_FIELDS, uid=None):
     
 def track_download(uid=None):
     if uid in id2progress and uid in id2total:
-        return f"{id2progress[uid]}/{id2total[uid]}"
+        complete = (id2progress[uid] == id2total[uid])
+        progress = f"{id2progress[uid]}/{id2total[uid]}"
+        if complete:
+            del id2progress[uid]
+            del id2total[uid]
+        return {"progress": progress, "complete": complete}
     else:
-        return "Wait..."
+        return {"progress": "Wait...", "complete": False}
