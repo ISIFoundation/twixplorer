@@ -5,8 +5,11 @@
 #  Via Alassio 11/c - 10126 Torino - Italy
 #
 from flask import request, redirect, url_for, session, Blueprint, \
-        render_template
+        render_template, jsonify
+
 import config
+import explore
+
 import tweepy
 import socket
 import json
@@ -16,11 +19,17 @@ import sys
 import traceback
 import store
 
+import urllib.parse
+
 # setup module
 mod = Blueprint("collector", __name__)
 
+@mod.app_template_filter()
+def quote(s):
+    return urllib.parse.quote(s)
+
 active_collectors = []
-datastore = store.NullDataStore()
+datastore = store.PyMongoDataStore(config.MONGODB_URL)
 
 def get_api(request):
     # set up and return a twitter api object
@@ -79,7 +88,35 @@ def stop_job():
     c = active_collectors.pop(int(job_id) - 1)
     c.stop()
     return redirect(url_for('collector.main'))
+    
 
+@mod.route('/explore/')
+def explore_homepage():
+    return render_template('explore.html', queries=explore.find_queries(datastore))
+    
+def parse_fields(fields_param):
+    return [f.strip() for f in fields_param.split(",")] if fields_param else explore.DEFAULT_FIELDS
+
+def get_query_fields():
+    assert 'q' in request.args, "Missing query"
+    q = urllib.parse.unquote(request.args.get('q').strip("'"))
+    fields = parse_fields(request.args.get('fields'))
+    return q, fields
+
+@mod.route('/explore/query')
+def explore_query():
+    q, fields = get_query_fields()
+    limit = int(request.args.get('limit', explore.DEFAULT_LIMIT))
+    return render_template('query.html', **explore.explore_query(datastore, q, limit=limit, fields=fields))
+    
+@mod.route('/explore/query/download')
+def download_query():
+    q, fields = get_query_fields()
+    return explore.download_query(datastore, q, fields=fields, uid=request.args.get('uid'))
+
+@mod.route('/explore/query/download/track')
+def track_download():
+    return jsonify(explore.track_download(uid=request.args.get('uid')))
 
 class StreamingListener(tweepy.StreamListener):
 
@@ -92,8 +129,8 @@ class StreamingListener(tweepy.StreamListener):
 
         try:
             status = json.loads(data)
-        except Exception, e:
-            print e, repr(data)
+        except Exception as e:
+            print(e, repr(data))
             return False
 
         twitter_obj = {'status':status, 'query':self.collector.query}
@@ -122,7 +159,7 @@ class Collector(threading.Thread):
     def run(self):
         q = self.query.split(",")
 
-        print "Streaming retweets for query '%s'" % q
+        print("Streaming retweets for query '%s'" % q)
         listener = StreamingListener(self)
 
         consumer_key, consumer_secret, \
@@ -139,12 +176,12 @@ class Collector(threading.Thread):
                 self.stream = tweepy.streaming.Stream(auth, listener, timeout=60.0)
                 self.stream.filter(track=q)
                 self.connected = False
-                print "Connection dropped:", self.query
+                print("Connection dropped:", self.query)
                 if self.active:
                     time.sleep(60)
             except socket.gaierror:
                 self.connected = False
-                print "Stream closed"
+                print("Stream closed")
                 time.sleep(60)
             except Exception:
                 self.connected = False
@@ -152,9 +189,9 @@ class Collector(threading.Thread):
                 sys.stdout.flush()
                 time.sleep(60)
 
-        print "Collector stopped."
+        print("Collector stopped.")
 
     def stop(self):
-        print "Stopping collector: ", self.query
+        print("Stopping collector: ", self.query)
         self.active = False
         self.stream.disconnect()

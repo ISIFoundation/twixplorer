@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block body %}
+    <h1>Twitter Topic Explorer - Data Explorer</h1>
+     
+     {% if queries %}
+     <p>List of queries registered on database:</p>
+     <ul>
+     {% for query in queries %}
+         <li><a href="{{ url_for('collector.explore_query') }}?q='{{query | quote}}'">{{query | truncate(300) }}</a></li>
+     {% endfor %}
+     </ul>
+     {% endif %}
+{% endblock %}

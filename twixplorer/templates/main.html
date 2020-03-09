@@ -11,13 +11,18 @@
         
     </p>
     
-    {% if active_collectors %}
     <p>List of Data Collection jobs:</p>
     <ul>
+    {% if active_collectors %}
     {% for job in active_collectors %}
         <li><a href="{{ url_for('collector.job') }}?id={{loop.index}}">Data Collection job. Keywords: {{ job.query }}</a></li>
     {% endfor %}
-    </ul>
+    {% else %}
+        <li> None. </li>
     {% endif %}
+    </ul>
+    
+    <p><a href="{{url_for('collector.explore_homepage')}}">Explore all past queries...</a></p>
+    
     <p></p>
 {% endblock %}
