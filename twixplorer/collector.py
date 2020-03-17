@@ -88,12 +88,12 @@ def stop_job():
     c = active_collectors.pop(int(job_id) - 1)
     c.stop()
     return redirect(url_for('collector.main'))
-    
+
 
 @mod.route('/explore/')
 def explore_homepage():
     return render_template('explore.html', queries=explore.find_queries(datastore))
-    
+
 def parse_fields(fields_param):
     return [f.strip() for f in fields_param.split(",")] if fields_param else explore.DEFAULT_FIELDS
 
@@ -108,7 +108,7 @@ def explore_query():
     q, fields = get_query_fields()
     limit = int(request.args.get('limit', explore.DEFAULT_LIMIT))
     return render_template('query.html', **explore.explore_query(datastore, q, limit=limit, fields=fields))
-    
+
 @mod.route('/explore/query/download')
 def download_query():
     q, fields = get_query_fields()
@@ -129,6 +129,15 @@ class StreamingListener(tweepy.StreamListener):
 
         try:
             status = json.loads(data)
+            try:
+                # deal with extended text, make it back-compatible
+                if 'extended_tweet' in status:
+                    status['text'] = status['extended_tweet']['full_text']
+                if 'retweeted_status' in status:
+                    if 'extended_tweet' in status['retweeted_status']:
+                        status['text'] = status['retweeted_status']['extended_tweet']['full_text']
+            except Exception:
+                pass
         except Exception as e:
             print(e, repr(data))
             return False
@@ -173,7 +182,7 @@ class Collector(threading.Thread):
         while (self.active):
             try:
                 self.connected = True
-                self.stream = tweepy.streaming.Stream(auth, listener, timeout=60.0)
+                self.stream = tweepy.streaming.Stream(auth, listener, timeout=60.0, tweet_mode='extended')
                 self.stream.filter(track=q)
                 self.connected = False
                 print("Connection dropped:", self.query)
