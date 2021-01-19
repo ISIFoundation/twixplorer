@@ -5,7 +5,7 @@
 #  Via Alassio 11/c - 10126 Torino - Italy
 #
 from flask import request, redirect, url_for, session
-from flaskextlocal.oauth import OAuth
+#from flaskextlocal.oauth import OAuth
 import flask
 import config
 

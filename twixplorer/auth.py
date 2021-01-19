@@ -5,54 +5,28 @@
 #  Via Alassio 11/c - 10126 Torino - Italy
 #
 from flask import request, redirect, url_for, session, Blueprint
-from flaskextlocal.oauth import OAuth
+from requests_oauthlib.oauth1_auth import Client
+import requests
 import config
 
 # setup module
 mod = Blueprint("auth", __name__)
-oauth = OAuth()
 
-twitter = oauth.remote_app('twitter',
-    # unless absolute urls are used to make requests, this will be added
-    # before all URLs.  This is also true for request_token_url and others.
-    base_url='http://api.twitter.com/1/',
-    # where flask should look for new request tokens
-    request_token_url='https://api.twitter.com/oauth/request_token',
-    # where flask should exchange the token with the remote application
-    access_token_url='https://api.twitter.com/oauth/access_token',
-    # twitter knows two authorizatiom URLs.  /authorize and /authenticate.
-    # they mostly work the same, but for sign on /authenticate is
-    # expected because this will give the user a slightly different
-    # user interface on the twitter side.
-    authorize_url='https://api.twitter.com/oauth/authenticate',
-    # the consumer keys from the twitter application registry.
-    consumer_key=config.CONSUMER_KEY,
-    consumer_secret=config.CONSUMER_SECRET,
-)
-
-
-@twitter.tokengetter
-def get_twitter_token():
-    """This is used by the API to look for the auth token and secret
-    it should use for API calls.  During the authorization handshake
-    a temporary set of token and secret is used, but afterwards this
-    function has to return the token and secret.  If you don't want
-    to store this in the database, consider putting it into the
-    session instead.
-    """
-    if 'screen_name' in session:
-        return (session['oauth_token'],
-                session['oauth_token_secret'])
-
+oauth = Client(config.CONSUMER_KEY, client_secret=config.CONSUMER_SECRET)
 
 @mod.route('/login')
 def login():
-    """Calling into authorize will cause the OpenID auth machinery to kick
-    in.  When all worked out as expected, the remote application will
-    redirect back to the callback URL provided.
-    """
-    return twitter.authorize(callback=url_for('auth.oauth_authorized',
-        next=request.args.get('next') or request.referrer or None))
+    uri, headers, body = oauth.sign('https://twitter.com/oauth/request_token')
+    res = requests.get(uri, headers=headers, data=body)
+    res_split = res.text.split('&') # Splitting between the two params sent back
+    oauth_token = res_split[0].split('=')[1] # Pulling our APPS OAuth token from the response.
+    
+    #TODO: add callback?
+#    callback = "http://localhost:8080/oauth-authorized"
+#    params['redirect_uri'] = callback
+
+    return redirect('https://api.twitter.com/oauth/authenticate?'+
+        'oauth_token=' + oauth_token, 302)
 
 
 @mod.route('/logout')
@@ -60,28 +34,23 @@ def logout():
     session.pop('screen_name', None)
     return redirect(request.referrer or url_for('index'))
 
-
 @mod.route('/oauth-authorized')
-@twitter.authorized_handler
-def oauth_authorized(resp):
-    """Called after authorization.  After this function finished handling,
-    the OAuth information is removed from the session again.  When this
-    happened, the tokengetter from above is used to retrieve the oauth
-    token and secret.
-
-    Because the remote application could have re-authorized the application
-    it is necessary to update the values in the database.
-
-    If the application redirected back after denying, the response passed
-    to the function will be `None`.  Otherwise a dictionary with the values
-    the application submitted.  Note that Twitter itself does not really
-    redirect back unless the user clicks on the application name.
-    """
-    next_url = request.args.get('next') or url_for('index')
-    if resp is None:
-        #TODO: show friendly message
-        #flash(u'You denied the request to sign in.')
+def oauth_authorized():
+    oauth_token = request.args.get('oauth_token')
+    oauth_verifier = request.args.get('oauth_verifier')
+    
+    if oauth_token is None:
         return redirect(next_url)
+    
+    res = requests.post('https://api.twitter.com/oauth/access_token?oauth_token=' + oauth_token + '&oauth_verifier=' + oauth_verifier)
+    print(res.text)
+    res_split = res.text.split('&')
+    oauth_token = res_split[0].split('=')[1]
+    oauth_secret = res_split[1].split('=')[1]
+    userid = res_split[2].split('=')[1]
+    username = res_split[3].split('=')[1]
+
+    next_url = request.args.get('next') or url_for('index')
 
 #     screen_name = resp['screen_name']
 #     oauth_token = resp['oauth_token']
@@ -114,10 +83,8 @@ def oauth_authorized(resp):
 #         user.oauth_token = oauth_token
 #         user.oauth_token_secret = oauth_token_secret
 
-    session['screen_name'] = resp['screen_name']
-    session['oauth_token'] = resp['oauth_token']
-    session['oauth_token_secret'] = resp['oauth_token_secret']
-
-#     commit()
+    session['screen_name'] = username
+    session['oauth_token'] = oauth_token
+    session['oauth_token_secret'] = oauth_secret
 
     return redirect(next_url)
